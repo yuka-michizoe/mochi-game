@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>和風ポップなお餅積みゲーム</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Mochiy+Pop+One&display=swap" rel="stylesheet">
+    
+    <style>
+        body {
+            /* フォントを適用 */
+            font-family: 'Mochiy Pop One', sans-serif;
+            text-align: center;
+            /* 背景を淡い和風グラデーションに */
+            background: linear-gradient(to bottom, #fff1e6, #fdf2f8);
+            margin: 0;
+            overflow: hidden;
+            color: #5d4037; /* 文字色を少し柔らかい茶色に */
+            touch-action: manipulation;
+        }
+        h1 {
+            margin: 15px 0;
+            font-size: 24px;
+            text-shadow: 2px 2px 0 #fff;
+        }
+        #gameContainer {
+            position: relative;
+            width: 340px;
+            margin: 0 auto;
+        }
+        #gameCanvas {
+            background-color: rgba(255, 255, 255, 0.8);
+            /* 木枠のようなデザインに変更 */
+            border: 8px solid #d4a373;
+            border-radius: 15px;
+            box-shadow: 0 6px 10px rgba(0,0,0,0.1);
+            display: block;
+        }
+        #ui-layer {
+            position: absolute;
+            top: -40px;
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            font-size: 16px;
+            padding: 0 10px;
+            box-sizing: border-box;
+        }
+        .message {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(255, 250, 245, 0.95);
+            padding: 25px;
+            border-radius: 20px;
+            /* ポップな二重枠線 */
+            border: 4px solid #ffb7c5;
+            box-shadow: 0 0 0 8px #fffbac;
+            display: none;
+            text-align: center;
+            width: 280px;
+        }
+        .message h2 {
+            color: #ff7f97;
+            margin-top: 0;
+        }
+        button {
+            background-color: #ff9a9e;
+            font-family: 'Mochiy Pop One', sans-serif;
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            font-size: 18px;
+            border-radius: 30px; /* 丸ボタン */
+            cursor: pointer;
+            margin-top: 15px;
+            box-shadow: 0 5px 0 #d68589; /* 立体的な影 */
+            transition: all 0.1s;
+        }
+        button:hover {
+            background-color: #ff858a;
+        }
+        button:active {
+            box-shadow: 0 2px 0 #d68589;
+            transform: translateY(3px); /* 押したような動き */
+        }
+        #scoreDisplay, #levelDisplay {
+            background: #fff;
+            padding: 5px 10px;
+            border-radius: 10px;
+            border: 2px solid #d4a373;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>🍡 和風ポップなお餅積み 🍡</h1>
+    
+    <div id="gameContainer">
+        <div id="ui-layer">
+            <span id="scoreDisplay">スコア: 0</span>
+            <span id="levelDisplay">段数: 1</span>
+        </div>
+        
+        <canvas id="gameCanvas" width="320" height="480"></canvas>
+
+        <div id="startScreen" class="message" style="display: block;">
+            <h2>お餅を積もう！</h2>
+            <p>画面をクリックで<br>カラフルなお餅を落とすよ。<br>ピッタリ重ねてね！</p>
+            <button onclick="startGame()">スタート</button>
+        </div>
+
+        <div id="gameOverScreen" class="message">
+            <h2>残念！崩れちゃった</h2>
+            <p>スコア: <span id="finalScore">0</span></p>
+            <p>最高段数: <span id="finalLevel">0</span></p>
+            <button onclick="startGame()">もう一度挑戦！</button>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        // ゲームの設定
+        const MOCHI_RADIUS = 40;
+        const MOCHI_HEIGHT = 50;
+        const SPEED_BASE = 3;
+
+        // パステルカラー5色のバリエーション
+        const PASTEL_COLORS = [
+            '#ffb7c5', // 桜色（ピンク）
+            '#b7ffc5', // 若草色（グリーン）
+            '#fffbac', // クリームイエロー
+            '#b7e3ff', // 空色（ブルー）
+            '#dcd0ff'  // 藤色（パープル）
+        ];
+
+        let score = 0;
+        let stackCount = 0;
+        let isGameOver = false;
+        let isDropping = false;
+        
+        let currentMochi = { x: 0, y: 0, direction: 1, color: '' };
+        let stack = [];
+        let animationId;
+
+        // ランダムなパステルカラーを取得するヘルパー関数
+        function getRandomColor() {
+            return PASTEL_COLORS[Math.floor(Math.random() * PASTEL_COLORS.length)];
+        }
+
+        function init() {
+            score = 0;
+            stackCount = 1;
+            stack = [];
+            isGameOver = false;
+            isDropping = false;
+
+            // 土台のお餅（色をランダムに設定）
+            stack.push({ 
+                x: canvas.width / 2, 
+                y: canvas.height - 60,
+                color: getRandomColor()
+            });
+
+            spawnNewMochi();
+            updateUI();
+            
+            document.getElementById('startScreen').style.display = 'none';
+            document.getElementById('gameOverScreen').style.display = 'none';
+            
+            if (animationId) cancelAnimationFrame(animationId);
+            gameLoop();
+        }
+
+        function startGame() {
+            init();
+        }
+
+        function spawnNewMochi() {
+            currentMochi = {
+                x: MOCHI_RADIUS,
+                y: 60,
+                direction: 1,
+                speed: SPEED_BASE + (stackCount * 0.5),
+                color: getRandomColor() // 新しいお餅にもランダムな色を設定
+            };
+            isDropping = false;
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // 積まれたお餅を描画（それぞれの色で）
+            stack.forEach((mochi) => {
+                drawMochi(mochi.x, mochi.y, mochi.color);
+            });
+
+            // 操作中のお餅を描画
+            if (!isGameOver) {
+                drawMochi(currentMochi.x, currentMochi.y, currentMochi.color);
+            }
+        }
+
+        // お餅単体の描画関数
+        function drawMochi(x, y, color) {
+            ctx.fillStyle = color;
+            // 輪郭線を少し柔らかい茶色に変更
+            ctx.strokeStyle = '#8d6e63';
+            ctx.lineWidth = 3;
+            
+            ctx.beginPath();
+            ctx.ellipse(x, y, MOCHI_RADIUS, MOCHI_HEIGHT / 2, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+
+            // お餅の膨らみ（ハイライト風に少し明るく）
+            ctx.beginPath();
+            ctx.arc(x, y - 5, MOCHI_RADIUS * 0.7, 0, Math.PI, false);
+            ctx.strokeStyle = 'rgba(255,255,255,0.5)';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+        }
+
+        function gameLoop() {
+            if (isGameOver) return;
+            update();
+            draw();
+            animationId = requestAnimationFrame(gameLoop);
+        }
+
+        function update() {
+            if (isDropping) {
+                currentMochi.y += 10;
+                const targetY = stack[stack.length - 1].y - (MOCHI_HEIGHT / 1.5);
+                if (currentMochi.y >= targetY) {
+                    checkLanding();
+                }
+            } else {
+                currentMochi.x += currentMochi.speed * currentMochi.direction;
+                if (currentMochi.x > canvas.width - MOCHI_RADIUS || currentMochi.x < MOCHI_RADIUS) {
+                    currentMochi.direction *= -1;
+                }
+            }
+        }
+
+        function checkLanding() {
+            const bottomMochi = stack[stack.length - 1];
+            const diffX = Math.abs(currentMochi.x - bottomMochi.x);
+
+            if (diffX < MOCHI_RADIUS * 0.8) {
+                // 成功時、現在のお餅の情報をスタックに追加
+                stack.push({ x: currentMochi.x, y: currentMochi.y, color: currentMochi.color });
+                stackCount++;
+
+                if (stack.length > 6) {
+                    stack.forEach(m => m.y += MOCHI_HEIGHT / 1.5);
+                    stack.shift();
+                }
+
+                calculateScore();
+                spawnNewMochi();
+            } else {
+                isGameOver = true;
+                showGameOver();
+            }
+            updateUI();
+        }
+
+        function calculateScore() {
+            let points = 0;
+            if (stackCount === 2) points = 2;
+            else if (stackCount === 3) points = 5;
+            else if (stackCount === 4) points = 10;
+            else if (stackCount > 4) points = 1;
+            score += points;
+        }
+
+        function updateUI() {
+            document.getElementById('scoreDisplay').textContent = `スコア: ${score}`;
+            document.getElementById('levelDisplay').textContent = `段数: ${stackCount}`;
+        }
+
+        function showGameOver() {
+            document.getElementById('finalScore').textContent = score;
+            document.getElementById('finalLevel').textContent = stackCount;
+            document.getElementById('gameOverScreen').style.display = 'block';
+        }
+
+        // 画面全体のクリック/タップに対応
+        document.body.addEventListener('pointerdown', (e) => {
+            // ボタンクリック時は反応させない
+            if (e.target.tagName === 'BUTTON') return;
+            
+            if (!isDropping && !isGameOver && stack.length > 0) {
+                isDropping = true;
+            }
+        });
+
+    </script>
+</body>
+</html>
