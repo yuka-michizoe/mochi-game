@@ -2,10 +2,7 @@
 const PASTEL = ["#F6C1D1", "#C8E7FF", "#D7F2C2", "#F9E6B3", "#D8C9FF"]; // 5色
 const BG = "#f7f3ee";                 // 和紙っぽいベース
 const BORDER = "rgba(90,70,50,0.35)"; // 上品な線色
-// 落下の速さ（開始は約3倍体感、段数でさらに加速）
-const GRAVITY_BASE = 2200;   // 遅くスタート
-const GRAVITY_PER_SCORE = 55;    // 1段ごとに+55（調整用）
-const GRAVITY_MAX = 2200 * 7;    // 上限（暴走防止）
+const GRAVITY = 200;                 // px/s^2
 const SPAWN_BASE = 1.05;              // 秒（だんだん速くしても良い）
 const NON_MOCHI_RATE = 0.14;          // たまに餅じゃないもの
 const STACK_TOLERANCE = 0.60;         // 横重なり率がこの以上なら成功（0〜1）
@@ -250,8 +247,7 @@ function update(dt){
 
   // 落下更新
   if (falling){
-    const gravityNow = Math.min(GRAVITY_MAX, GRAVITY_BASE + score * GRAVITY_PER_SCORE);
-falling.vy += gravityNow * dt;
+    falling.vy += GRAVITY * dt;
     falling.y += falling.vy * dt;
     if (falling.type === "junk") falling.angle += falling.spin * dt;
 
