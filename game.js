@@ -3,7 +3,7 @@ const PASTEL = ["#F6C1D1", "#C8E7FF", "#D7F2C2", "#F9E6B3", "#D8C9FF"]; // 5色
 const BG = "#f7f3ee";                 // 和紙っぽいベース
 const BORDER = "rgba(90,70,50,0.35)"; // 上品な線色
 // 落下の速さ（開始は約3倍体感、段数でさらに加速）
-const GRAVITY_BASE = 2200 /50;   // 10倍遅くスタート
+const GRAVITY_BASE = 22;   // 遅くスタート
 const GRAVITY_PER_SCORE = 55;    // 1段ごとに+55（調整用）
 const GRAVITY_MAX = 2200 * 7;    // 上限（暴走防止）
 const SPAWN_BASE = 1.05;              // 秒（だんだん速くしても良い）
